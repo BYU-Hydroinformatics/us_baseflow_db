@@ -1,2 +1,2 @@
-# baseflow_db
+# us_baseflow_db
 National baseflow database
