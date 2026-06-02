@@ -31,7 +31,7 @@ The objective of this project is to develop a national baseflow database for the
 >    9. add the ability to generate events for a specific gage on the website with user-selected parameters
 ---
 
->[**NOTE**] Research questions
+>**NOTE** Research questions
 > 1. How do we label BFD days?
 > 2. How do we define a baseflow event?
 > 3. How do we store the database and what statistics should we compute for each event?
