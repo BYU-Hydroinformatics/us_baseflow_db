@@ -2,6 +2,55 @@
 
 The objective of this project is to develop a national baseflow database for the United States. This will consist of two main parts: (1) a comprehensive database of daily US stream gage data with each date labeled with a 0 or 1 indicating whether the flow on that date is baseflow-dominant or not, and (2) python code that can be used to update the database as new data becomes available.
 
+---
+> **COMMENT** Database design
+>
+> I see the database differently. Rather than BFD-labeled streamflow and code to generate labeld stream flow, I see it as an actual database of BFD/Drought flow **events**. For example, a table with columns for gage ID, start date of event, duration of event, and other relevant attributes and statistics. This would be more useful for users who want to analyze baseflow-dominant events rather than daily streamflow data. 
+
+> This will require several questions to be answnered through reseearch
+> 1. BFD labeling - strict baseflow, baseflow within X% of total flow, current ML-based approach, or some sort of ensemble approach that combines multiple methods for identifying baseflow-dominant days.
+> 2. What is a base-flow event
+>    2. There are several ideas: smooth gage flow, if flow is within X% of a baseflow separate method, it is BFD, then look at sequential days to see if they are also BFD.
+>    3. Current website approach - X% of days in period are baseflow-dominant
+>    4. The problem is how to deal with variations in the baseflow-dominant event, does the event end with a sligth excursion or continue.
+>    5. How to deal with the fact that the baseflow-dominant event may be interrupted by a short period of non-baseflow-dominant days, but then return to being baseflow-dominant. For example, if we have a sequence of 10 days where 8 are baseflow-dominant and 2 are not, do we consider this a single baseflow-dominant event or two separate events?
+> 6. How do store the database
+> 7. What other statistics should be computed for each event? e.g., std dev, avg flow, where in the flow duraction curve does it exist
+ ---
+ 
+ 
+> > **NOTE** Research tasks
+> 1. BFD labeling - need to evaluate all the methods
+> 2. BFD/Drought "event" definition - need literature review
+> 3. BFD/Drought "event" definition - need to define what is a baseflow event
+> 4. Database design - need to determine how to store the database and what statistics to compute for each event
+> 5. Database scope - All USGS gages, GAUGES data set, etc - I lean towards the GAUGES data set, but have the abiliaty to generate "events" for any gage selected in the website - but these wouldn't be in the database
+> 6. Event generation - 
+>    7. Determine standard parameters for the database (select X% or other parameters), 
+>    8. publish code so people could generate their own database with different parameters, 
+>    9. add the ability to generate events for a specific gage on the website with user-selected parameters
+---
+
+>**NOTE** Research questions
+> 1. How do we label BFD days?
+> 2. How do we define a baseflow event?
+> 3. How do we store the database and what statistics should we compute for each event?
+> 4. What is the scope of the database (e.g., all USGS gages, GAUGES data set, etc.)?
+>    5. How do we generate the events for the database (e.g., determine standard parameters for the database, publish code so people could generate their own database with different parameters, add the ability to generate events for a specific gage on the website with user-selected parameters)?
+>    6. How do we evaluate the performance of the database?
+--- 
+> **NOTE** Potential Papers
+> 1 BFD/Drought Database. Description, methods, lit review
+> 2 BFD/Drought Database Spatial Analysis - look at BFD/Drought events, idientfy spatial patterns - simlar to Ryan's WRR paper
+> 3. pyBFS Forcast Skill - use database to evealuate forcast skill, compare to NWM or other methods such as LSTM
+> 3 BFD/Drought Website, Description, tools, case study 
+>    3. evaluate different ways to define BFD dayes, BFD/drought events, etc. 
+>    4. Paramater senstivity analysis - how do the results change with different parameters for defining BFD days and events?
+> 5. BFD/Drought Events and Groundwater Storage Changes - use the database to analyze the correlation between BFD/drought events and groundwater storage changes, including the use of GRACE data
+> 6. BFD/Drought Events and GW Storage Changes - use the database to analyze the correlation between BFD/drought events and groundwater storage changes, including the use of GRACE data, and apply the GWBASE algorithm to analyze the correlation between baseflow and groundwater level changes in selected basins
+> 7. BFD/Drought Events and CLimate  Changes - use the database to analyze the impact of climate change on BFD/drought events, including changes in the frequency, duration, and intensity of these events over time
+
+
 There are a number of use cases for this database, including:
 - Anlyzing trends in baseflow over time and across different regions of the country
 - Analyzing the impact of various factors (e.g. land use, climate change) on baseflow
@@ -18,6 +67,10 @@ Our hypothesis is that an ensemble approach that combines multiple methods for i
 # Data Sources
 
 The primary data source for this project will be the USGS National Water Information System (NWIS), which provides daily streamflow data for thousands of gages across the United States. We will aggregate these data into daily values for each gage.
+
+---
+> **NOTE** Use GAUGES dataset for database
+---
 
 # Methods
 
