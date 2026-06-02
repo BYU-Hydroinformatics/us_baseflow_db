@@ -40,10 +40,10 @@ The objective of this project is to develop a national baseflow database for the
 >    6. How do we evaluate the performance of the database?
 --- 
 > **NOTE** Potential Papers
-> 1 BFD/Drought Database. Description, methods, lit review
-> 2 BFD/Drought Database Spatial Analysis - look at BFD/Drought events, idientfy spatial patterns - simlar to Ryan's WRR paper
+> 1. BFD/Drought Database. Description, methods, lit review
+> 2. BFD/Drought Database Spatial Analysis - look at BFD/Drought events, idientfy spatial patterns - simlar to Ryan's WRR paper
 > 3. pyBFS Forcast Skill - use database to evealuate forcast skill, compare to NWM or other methods such as LSTM
-> 3 BFD/Drought Website, Description, tools, case study 
+> 3. BFD/Drought Website, Description, tools, case study 
 >    3. evaluate different ways to define BFD dayes, BFD/drought events, etc. 
 >    4. Paramater senstivity analysis - how do the results change with different parameters for defining BFD days and events?
 > 5. BFD/Drought Events and Groundwater Storage Changes - use the database to analyze the correlation between BFD/drought events and groundwater storage changes, including the use of GRACE data
