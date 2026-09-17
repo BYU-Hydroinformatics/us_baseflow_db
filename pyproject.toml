@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bfd-db"
+version = "0.1.0"
+description = "National Baseflow-Dominant Database for the United States"
+authors = [{ name = "Amin Aghababaei", email = "a.aghababaei44@gmail.com" }]
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
+
+# Downstream consumers of just the labeling/ensemble algorithm (e.g.
+# low_flow_analyst) should depend on bfd-db[labeling], not the bare package —
+# that pulls in the separation/classification libraries without the
+# database-build-only stack (geopandas, tqdm, click) or plotting (matplotlib),
+# which this project's Docker/Render deployments don't need and don't want
+# the weight of.
+[project.optional-dependencies]
+labeling = [
+    "baseflowx>=0.1",
+    "pybfs>=0.1",
+    "scikit-learn>=1.4",
+    "joblib>=1.3",
+]
+database = [
+    "pyarrow>=14.0",
+    "geopandas>=0.14",
+    "tqdm>=4.66",
+    "click>=8.1",
+]
+analysis = [
+    "matplotlib>=3.8",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
