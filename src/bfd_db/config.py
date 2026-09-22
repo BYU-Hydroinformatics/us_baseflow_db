@@ -31,6 +31,14 @@ BF_RATIO_THRESHOLD_LOW: float | None = None
 LOW_FLOW_ANCHOR: float = 0.10
 HIGH_FLOW_ANCHOR: float = 0.50
 
+# Flatness voter (see bfd_db.labeling.ensemble.flatness_vote): an additional
+# vote from flow flatness alone, independent of any separation method's
+# qb/Q ratio. Off by default (None): the ratio-based voters plus RF-BFD are
+# the whole ensemble, matching pre-flatness-voter behavior exactly.
+USE_FLATNESS_VOTE: bool = False
+FLATNESS_WINDOW: int = 15
+FLATNESS_CV_THRESHOLD: float = 0.05
+
 # Fraction of methods that must vote BFD for the ensemble label to be 1.
 # 0.5 = simple majority (≥2 of 3 methods).
 VOTING_FRACTION: float = 0.5
@@ -60,6 +68,9 @@ class PipelineConfig:
     bf_ratio_threshold_low: float | None = BF_RATIO_THRESHOLD_LOW
     low_flow_anchor: float = LOW_FLOW_ANCHOR
     high_flow_anchor: float = HIGH_FLOW_ANCHOR
+    use_flatness_vote: bool = USE_FLATNESS_VOTE
+    flatness_window: int = FLATNESS_WINDOW
+    flatness_cv_threshold: float = FLATNESS_CV_THRESHOLD
     voting_fraction: float = VOTING_FRACTION
     t_c: int = T_C
     d_min: int = D_MIN

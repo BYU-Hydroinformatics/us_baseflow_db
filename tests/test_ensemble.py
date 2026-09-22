@@ -13,8 +13,10 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 from bfd_db.labeling.ensemble import (
     anchor_flows,
+    apply_flatness_override,
     effective_threshold,
     ensemble_vote,
+    flatness_vote,
     label_from_ratio,
     voter_agreement_stats,
 )
@@ -108,6 +110,41 @@ def test_ensemble_vote_majority():
     }
     ensemble = ensemble_vote(labels, voting_fraction=0.5)
     assert ensemble.tolist() == [1, 0, 0]
+
+
+def test_flatness_vote_flags_constant_stretch():
+    # 20 flat days at Q=10 preceded by a falling limb from a peak.
+    q = _flow_series([100, 60, 30, 15] + [10.0] * 20)
+    vote = flatness_vote(q, window=5, cv_threshold=0.05)
+    assert vote.iloc[-5:].tolist() == [1, 1, 1, 1, 1]
+
+
+def test_flatness_vote_ignores_a_rising_limb():
+    q = _flow_series([10.0] * 10 + [12, 20, 40, 80, 150])
+    vote = flatness_vote(q, window=5, cv_threshold=0.05)
+    assert vote.iloc[-1] == 0
+
+
+def test_flatness_vote_ignores_a_noisy_stretch():
+    q = _flow_series([10, 20, 8, 22, 9, 21, 10, 19, 11, 18])
+    vote = flatness_vote(q, window=5, cv_threshold=0.05)
+    assert vote.iloc[-1] == 0
+
+
+def test_apply_flatness_override_only_adds_days():
+    dates = pd.date_range("2020-01-01", periods=4)
+    ensemble = pd.Series([1, 0, 0, 0], index=dates)
+    flatness = pd.Series([0, 1, 0, 0], index=dates)
+    combined = apply_flatness_override(ensemble, flatness)
+    assert combined.tolist() == [1, 1, 0, 0]
+
+
+def test_apply_flatness_override_never_removes_a_day():
+    dates = pd.date_range("2020-01-01", periods=2)
+    ensemble = pd.Series([1, 0], index=dates)
+    flatness = pd.Series([0, 0], index=dates)
+    combined = apply_flatness_override(ensemble, flatness)
+    assert combined.tolist() == [1, 0]
 
 
 def test_voter_agreement_stats():

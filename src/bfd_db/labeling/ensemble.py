@@ -26,6 +26,8 @@ import pandas as pd
 
 from bfd_db.config import (
     BF_RATIO_THRESHOLD,
+    FLATNESS_CV_THRESHOLD,
+    FLATNESS_WINDOW,
     HIGH_FLOW_ANCHOR,
     LOW_FLOW_ANCHOR,
     VOTING_FRACTION,
@@ -107,6 +109,50 @@ def label_from_ratio(q_b: pd.Series, q: pd.Series, threshold: float | pd.Series)
     """
     ratio = (q_b / q.replace(0, np.nan)).clip(upper=1.0)
     return (ratio >= threshold).astype(int).fillna(0)
+
+
+def flatness_vote(
+    q: pd.Series,
+    window: int = FLATNESS_WINDOW,
+    cv_threshold: float = FLATNESS_CV_THRESHOLD,
+) -> pd.Series:
+    """0/1 vote from flow flatness alone, independent of any separation
+    method's qb/Q ratio.
+
+    A day votes BFD if the trailing `window`-day coefficient of variation of
+    Q is below `cv_threshold` and flow has not risen over that window. This
+    catches sustained low, flat recessions where the digital filters'
+    recession-decay memory has not caught up to the observed flow yet (their
+    qb/Q can sit well below any reasonable threshold on exactly these days —
+    see docs/adaptive-bfd-threshold.md #8), independent of the ratio test.
+
+    Off by default everywhere it matters (PipelineConfig.use_flatness_vote):
+    this changes labels, so opting in is a deliberate choice, not a silent
+    side effect of adding the function.
+    """
+    roll_mean = q.rolling(window).mean()
+    roll_std = q.rolling(window).std()
+    cv = roll_std / roll_mean.replace(0, np.nan)
+    flat = cv < cv_threshold
+    not_rising = q <= q.shift(window - 1) * (1 + cv_threshold)
+    vote = (flat & not_rising).astype(int).fillna(0)
+    vote.name = "flatness"
+    return vote
+
+
+def apply_flatness_override(ensemble: pd.Series, flatness: pd.Series) -> pd.Series:
+    """OR a flatness vote into an already-computed ensemble label.
+
+    Flatness is a rare condition (a few percent of days on a typical gage —
+    see flatness_vote()), so folding it in as one more equal-weight voter in
+    ensemble_vote() dilutes the majority on *every* day, not just flat ones,
+    and net-decreases the BFD rate. An OR-override avoids that: a day the
+    ratio-based majority already called BFD stays BFD regardless of
+    `flatness`, and flatness only rescues days the majority missed.
+    """
+    combined = (ensemble.astype(bool) | flatness.astype(bool)).astype(int)
+    combined.name = "ensemble"
+    return combined
 
 
 def voter_agreement_stats(labels: pd.DataFrame, ensemble: pd.Series) -> dict:
@@ -213,8 +259,18 @@ def label_gage_all_methods(
             raw["qb_pybfs"] = q_b_pybfs
             labels["pybfs"] = label_from_ratio(q_b_pybfs, q, t_eff)
 
-    # 4. Ensemble vote (only over available labels)
-    labels["ensemble"] = ensemble_vote(labels, config.voting_fraction)
+    # 4. Ensemble vote over the ratio + classifier voters
+    ensemble = ensemble_vote(labels, config.voting_fraction)
+
+    # 5. Flatness override (opt-in; see flatness_vote() and
+    # apply_flatness_override()) — rescues flat recessions the digital
+    # filters lag behind on, without diluting the vote on every other day.
+    if config.use_flatness_vote:
+        flatness = flatness_vote(q, config.flatness_window, config.flatness_cv_threshold)
+        labels["flatness"] = flatness
+        ensemble = apply_flatness_override(ensemble, flatness)
+
+    labels["ensemble"] = ensemble
 
     result = pd.DataFrame(labels)
     for col, series in raw.items():
