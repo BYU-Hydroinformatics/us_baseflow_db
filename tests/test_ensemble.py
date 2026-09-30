@@ -17,8 +17,10 @@ from bfd_db.labeling.ensemble import (
     effective_threshold,
     ensemble_vote,
     flatness_vote,
+    force_not_bfd,
     label_from_ratio,
     voter_agreement_stats,
+    zero_flow_mask,
 )
 
 
@@ -159,3 +161,22 @@ def test_voter_agreement_stats():
     assert stats["a"]["agreement"] == 1.0
     assert stats["b"]["bfd_fraction"] == 0.25
     assert stats["b"]["agreement"] == 0.75
+
+
+def test_zero_flow_mask_flags_only_no_flow_days():
+    q = _flow_series([0, 0.001, 5, 0])
+    assert zero_flow_mask(q).tolist() == [True, False, False, True]
+
+
+def test_force_not_bfd_overrides_a_classifier_that_calls_zero_flow_bfd():
+    q = _flow_series([0, 0, 3, 3])
+    rf = pd.Series([1, 1, 1, 0], index=q.index, name="rf_bfd")  # RF-BFD calls the dry days BFD
+    out = force_not_bfd(rf, zero_flow_mask(q))
+    assert out.tolist() == [0, 0, 1, 0]
+    assert out.name == "rf_bfd"
+
+
+def test_force_not_bfd_zeroes_a_flat_vote_on_zero_flow_days():
+    q = _flow_series([0, 0, 0, 0, 0, 0, 5])
+    flat = pd.Series([1, 1, 1, 1, 1, 1, 0], index=q.index)
+    assert force_not_bfd(flat, zero_flow_mask(q)).tolist() == [0] * 7

@@ -155,6 +155,24 @@ def apply_flatness_override(ensemble: pd.Series, flatness: pd.Series) -> pd.Seri
     return combined
 
 
+def zero_flow_mask(q: pd.Series) -> pd.Series:
+    """True on days with no flow at all (Q <= 0).
+
+    A day with no flow cannot be baseflow-dominant. The ratio voters already
+    fail it (qb/0 is NaN, so the comparison is False), but RF-BFD is a
+    classifier that never sees a ratio and does call such days BFD, and the
+    flatness rule can too when a rolling window of near-zero flow looks flat.
+    """
+    return q <= 0
+
+
+def force_not_bfd(labels: pd.Series, mask: pd.Series) -> pd.Series:
+    """Set a 0/1 label series to 0 wherever `mask` is True."""
+    out = labels.mask(mask, 0).astype(int)
+    out.name = labels.name
+    return out
+
+
 def voter_agreement_stats(labels: pd.DataFrame, ensemble: pd.Series) -> dict:
     """Per-voter scorecard over the given record: how often each method calls
     BFD, and how often it lands on the same side as the ensemble it helped
@@ -259,6 +277,11 @@ def label_gage_all_methods(
             raw["qb_pybfs"] = q_b_pybfs
             labels["pybfs"] = label_from_ratio(q_b_pybfs, q, t_eff)
 
+    # 3b. No flow, no baseflow-dominance: override every voter on zero-flow
+    # days (matters for RF-BFD, which would otherwise call them BFD).
+    zero_flow = zero_flow_mask(q)
+    labels = {name: force_not_bfd(lab, zero_flow) for name, lab in labels.items()}
+
     # 4. Ensemble vote over the ratio + classifier voters
     ensemble = ensemble_vote(labels, config.voting_fraction)
 
@@ -267,10 +290,11 @@ def label_gage_all_methods(
     # filters lag behind on, without diluting the vote on every other day.
     if config.use_flatness_vote:
         flatness = flatness_vote(q, config.flatness_window, config.flatness_cv_threshold)
+        flatness = force_not_bfd(flatness, zero_flow)
         labels["flatness"] = flatness
         ensemble = apply_flatness_override(ensemble, flatness)
 
-    labels["ensemble"] = ensemble
+    labels["ensemble"] = force_not_bfd(ensemble, zero_flow)
 
     result = pd.DataFrame(labels)
     for col, series in raw.items():

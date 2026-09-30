@@ -177,11 +177,44 @@ It is **not** a fix for the underlying problem. See §8.
 | `high_flow_anchor <= low_flow_anchor` | `q_hi <= q_lo`, no usable ramp → flat `bf_ratio_threshold` for every day |
 | Near-constant or all-zero record | quantiles collapse, `q_hi > q_lo > 0` fails → flat `bf_ratio_threshold` |
 | Non-finite anchor flows | flat `bf_ratio_threshold` |
-| `Q = 0` on a day | `t_eff` filled with `bf_ratio_threshold`; ratio is NaN, comparison is False, day labels **not BFD** |
+| `Q = 0` on a day | `t_eff` filled with `bf_ratio_threshold`; ratio is NaN, comparison is False, day labels **not BFD**. Every other voter and the ensemble are forced to **not BFD** too — see §5.1 |
 | `qb` is NaN (filter warm-up, non-converged PyBFS) | comparison False → **not BFD** |
 
 Every fallback lands on the *strict* flat threshold, so a misconfiguration
 under-labels rather than silently over-labels.
+
+### 5.1 Zero-flow days are never BFD
+
+A day with no flow at all cannot be baseflow-dominant, so
+`label_gage_all_methods()` forces **every voter and the ensemble to 0** wherever
+`Q <= 0` (`zero_flow_mask()` / `force_not_bfd()` in
+[`ensemble.py`](../src/bfd_db/labeling/ensemble.py)). The override is applied to
+each voter *before* the vote, so `vote_frac` is 0 on those days, and to the
+ensemble again *after* the flatness override.
+
+Why it has to be explicit rather than left to each method:
+
+- **Ratio voters** (baseflowx filters, PyBFS) already fail it: `qb / 0` is NaN,
+  the comparison is False. No change for them.
+- **RF-BFD does not.** It is a classifier that never sees a ratio, and it calls
+  zero-flow days BFD. On gage 08177300 it labelled 4,157 of 4,157 zero-flow days
+  BFD; on 254543080491101, 13,900 of 14,100. Those days were counted toward the
+  ensemble's BFD fraction and toward pooled events.
+- **The flatness rule** is overridden too, as a guard. In practice it rarely
+  fires on a zero day (one zero in the trailing window raises its CV), but it
+  is a rolling statistic with no notion of "no flow", so the rule does not rely
+  on that.
+
+Unlike the ramp (§1) and the flatness voter, this is **not opt-in**: it is a
+physical constraint, not a tuning choice. Consequence for reproducibility:
+any snapshot labelled before this rule existed has BFD days on zero-flow
+records that a rebuild will remove. Only gages that have zero-flow days are affected,
+i.e. the intermittent and ephemeral ones.
+
+Not covered: event pooling can still bridge a *short* zero-flow stretch. Zero
+days are ordinary gap days to `pool_events()`, so a run of `t_c` days or fewer
+inside an otherwise BFD period ends up inside the event (its `gap_days`).
+Longer zero-flow stretches split the event as usual.
 
 ---
 
