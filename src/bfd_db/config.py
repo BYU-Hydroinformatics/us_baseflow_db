@@ -18,18 +18,17 @@ DATA_OUTPUTS = ROOT / "data" / "outputs"
 # ── Labeling defaults ──────────────────────────────────────────────────────────
 # X%: a day is labeled BFD by a separation method if
 #     baseflow_estimate / total_Q  >=  BF_RATIO_THRESHOLD
-BF_RATIO_THRESHOLD: float = 0.95
+BF_RATIO_THRESHOLD: float = 0.96
 
 # Magnitude-adaptive threshold (see docs/adaptive-bfd-threshold.md): the ratio
 # test is relaxed to BF_RATIO_THRESHOLD_LOW at or below the gage's own
 # LOW_FLOW_ANCHOR flow-duration quantile, held at BF_RATIO_THRESHOLD at or
 # above HIGH_FLOW_ANCHOR, and log-interpolated between. None means "off" — a
-# flat BF_RATIO_THRESHOLD applies to every day regardless of flow, which is
-# the frozen-snapshot default for the national database build. A caller opts
-# into the ramp by passing a PipelineConfig with this set (e.g. 0.75).
-BF_RATIO_THRESHOLD_LOW: float | None = None
-LOW_FLOW_ANCHOR: float = 0.10
-HIGH_FLOW_ANCHOR: float = 0.50
+# flat BF_RATIO_THRESHOLD applies to every day regardless of flow. The defaults
+# match the Low Flow Analyst app and are the national database build defaults.
+BF_RATIO_THRESHOLD_LOW: float | None = 0.02
+LOW_FLOW_ANCHOR: float = 0.33
+HIGH_FLOW_ANCHOR: float = 0.56
 
 # Flatness voter (see bfd_db.labeling.ensemble.flatness_vote): an additional
 # vote from flow flatness alone, independent of any separation method's
@@ -46,19 +45,20 @@ VOTING_FRACTION: float = 0.5
 # ── Event generation defaults ──────────────────────────────────────────────────
 # t_c: maximum non-BFD gap (days) between two adjacent BFD runs that are
 #      merged into a single event (inter-event time criterion).
-T_C: int = 3
+T_C: int = 10
 
 # d_min: minimum event duration (days) — shorter pooled events are discarded.
-D_MIN: int = 7
+D_MIN: int = 21
 
 # k: number of consecutive BFD days that must be observed before the causal
 #    onset detector fires (look-ahead free).
 K_ONSET: int = 5
 
 # ── Data scope ─────────────────────────────────────────────────────────────────
-# Date range for the national database build.
-START_DATE: str = "1950-01-01"
-END_DATE: str = "2024-12-31"   # update each snapshot
+# Date range for the national database build. None = no limit, so each gage
+# is processed over its full period of record.
+START_DATE: str | None = None
+END_DATE: str | None = None
 
 
 @dataclass
@@ -75,8 +75,8 @@ class PipelineConfig:
     t_c: int = T_C
     d_min: int = D_MIN
     k_onset: int = K_ONSET
-    start_date: str = START_DATE
-    end_date: str = END_DATE
+    start_date: str | None = START_DATE
+    end_date: str | None = END_DATE
     baseflowx_methods: list = field(default_factory=lambda: [
         "eckhardt", "chapman", "lyne_hollick", "boughton"
     ])
