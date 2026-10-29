@@ -59,3 +59,22 @@ def test_pool_events_n_bfd_days():
     events = pool_events(labels, t_c=2, d_min=1)
     assert events.iloc[0]["n_bfd_days"] == 8
     assert events.iloc[0]["gap_days"] == 2
+
+
+def test_pool_events_breaks_at_missing_records():
+    # 15 BFD days, a 30-day hole in the record, then 15 more BFD days. The hole
+    # is not a non-BFD gap: the two stretches must never merge into one event.
+    dates = pd.date_range("2000-01-01", periods=15).append(
+        pd.date_range("2000-02-15", periods=15))
+    s = pd.Series(1, index=dates)
+    ev = pool_events(s, t_c=40, d_min=10)
+    assert len(ev) == 2
+    assert ev["duration"].tolist() == [15, 15]
+    assert (ev["gap_days"] == 0).all()
+
+
+def test_pool_events_missing_record_shortens_below_dmin():
+    # A one-day hole splits a 20-day run into 10 + 9 days; neither reaches d_min=15.
+    dates = pd.date_range("2000-01-01", periods=20).delete(10)
+    s = pd.Series(1, index=dates)
+    assert pool_events(s, t_c=3, d_min=15).empty
