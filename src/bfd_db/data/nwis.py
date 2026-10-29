@@ -23,8 +23,8 @@ NWIS_CACHE = DATA_RAW / "nwis"
 
 def load_daily_q(
     site_no: str,
-    start_date: str | None = None,
-    end_date: str | None = None,
+    start_date: str,
+    end_date: str,
 ) -> pd.DataFrame:
     """Load daily discharge for one gage from the local CSV cache.
 
@@ -38,8 +38,7 @@ def load_daily_q(
     site_no : str
         Zero-padded 8-digit USGS site number.
     start_date, end_date : str
-        ISO-format date strings (e.g. '1950-01-01'); None leaves that end
-        of the record unclipped.
+        ISO-format date strings (e.g. '1950-01-01').
     """
     csv_path = NWIS_CACHE / f"{site_no}.csv"
     if not csv_path.exists():
